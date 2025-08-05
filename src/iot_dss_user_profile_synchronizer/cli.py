@@ -3,6 +3,7 @@
 import typer
 from rich.console import Console
 import json
+import requests
 
 from iot_dss_user_profile_synchronizer import utils
 
