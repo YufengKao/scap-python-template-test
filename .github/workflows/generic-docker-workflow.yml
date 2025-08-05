@@ -45,16 +45,20 @@ jobs:
           fi
           ruff check src tests | ./bin/reviewdog -efm="%f:%l:%c: %m" \
             -name="ruff check" \
-            -reporter=github-pr-review \
+            -reporter="$REPORTER" \
             -level=error
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Ruff format check with reviewdog
         run: |
+          REPORTER="github-pr-review"
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            REPORTER="github-check"
+          fi
           ruff format --check src tests | ./bin/reviewdog -efm="%f:%l:%c: %m" \
             -name="ruff format" \
-            -reporter=github-pr-review \
+            -reporter="$REPORTER" \
             -level=warning
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
