@@ -15,7 +15,47 @@ env:
   IMAGE_NAME_SHORT: iot-dss/iot-dss-user-profile-synchronizer
 
 jobs:
-  run-pytest:
+  lint:
+    name: Lint with Ruff
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      checks: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Ruff and reviewdog
+        run: |
+          pip install ruff
+          curl -sfL https://raw.githubusercontent.com/reviewdog/reviewdog/master/install.sh | sh -s -- -b ./bin
+        env:
+          REVIEWDOG_VERSION: latest
+
+      - name: Ruff check with reviewdog
+        run: |
+          ruff check src tests | ./bin/reviewdog -efm="%f:%l:%c: %m" \
+            -name="ruff check" \
+            -reporter=github-pr-review \
+            -level=error
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ruff format check with reviewdog
+        run: |
+          ruff format --check src tests | ./bin/reviewdog -efm="%f:%l:%c: %m" \
+            -name="ruff format" \
+            -reporter=github-pr-review \
+            -level=warning
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  run-test-and-build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -25,6 +65,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      
 
       - name: Build test image
         uses: gorilla-ai/devops-github-shared-actions/actions/build-push-docker@0.0.1
