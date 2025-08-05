@@ -3,6 +3,7 @@
 import typer
 from rich.console import Console
 import json
+import requests
 
 from iot_dss_user_profile_synchronizer import utils
 
@@ -17,7 +18,5 @@ def main():
                "iot_dss_user_profile_synchronizer.cli.main")
     console.print("See Typer documentation at https://typer.tiangolo.com/")
     utils.do_something_useful()
-
-
 if __name__ == "__main__":
     app()
