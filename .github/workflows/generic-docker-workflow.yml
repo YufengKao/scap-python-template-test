@@ -39,6 +39,10 @@ jobs:
 
       - name: Ruff check with reviewdog
         run: |
+          REPORTER="github-pr-review"
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            REPORTER="github-check"
+          fi
           ruff check src tests | ./bin/reviewdog -efm="%f:%l:%c: %m" \
             -name="ruff check" \
             -reporter=github-pr-review \
