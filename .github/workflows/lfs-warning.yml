@@ -1,0 +1,18 @@
+name: LFS-warning
+
+on:
+  pull_request:
+    branches: ["*"]
+    types: [opened, reopened, synchronize]
+
+jobs:
+  lfs-warning:
+    name: LFS Warning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Repo Code
+        uses: actions/checkout@v3
+      - name: LFS Warning
+        uses: ppremk/lfs-warning@v3.2
+        with:
+          filesizelimit: 10MB

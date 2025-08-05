@@ -1,0 +1,82 @@
+name: Generic Docker Workflow
+on:
+  push:
+    branches:
+      - "*"
+    tags:
+      - "*"
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME_SHORT: iot-dss/iot-dss-user-profile-synchronizer
+
+jobs:
+  run-pytest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      checks: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build test image
+        uses: gorilla-ai/devops-github-shared-actions/actions/build-push-docker@0.0.1
+        id: build_test_image
+        with:
+          gcrw_host: ${{ vars.GCRW_HOST }}
+          gcr_host: ${{ vars.GCR_HOST }}
+          registry_username: ${{ secrets.CUSTOM_REGISTRY_USERNAME }}
+          registry_password: ${{ secrets.CUSTOM_REGISTRY_PASSWORD }}
+          image_name_short: ${{ env.IMAGE_NAME_SHORT }}
+          load: true
+          target: test-build
+          tags: ${{ env.IMAGE_NAME_SHORT }}:test-build
+          fail_if_trivy_fails: 0
+
+      - name: Run unit tests (pytest)
+        run: |
+          docker run -v /tmp:/app/reports --rm ${{ env.IMAGE_NAME_SHORT }}:test-build
+          cp /tmp/pytest.xml pytest.xml
+          cp /tmp/pytest-coverage.txt pytest-coverage.txt
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: success() || failure() # always run even if the previous step fails
+        with:
+          files: |
+            pytest.xml
+
+      - name: Pytest coverage comment
+        if: success() || failure() # always run even if the previous step fails
+        id: coverageComment
+        uses: MishaKav/pytest-coverage-comment@main
+        with:
+          title: Coverage Report
+          pytest-coverage-path: pytest-coverage.txt
+          junitxml-path: pytest.xml
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          hide-comment: ${{ github.event_name != 'pull_request' }}
+
+      - name: Update job summary with coverage report
+        if: success() || failure() # always run even if the previous step fails
+        run: |
+          echo "${{ steps.coverageComment.outputs.coverageHtml }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Build docker image
+        uses: gorilla-ai/devops-github-shared-actions/actions/build-push-docker@0.0.1
+        id: build_image
+        with:
+          gcrw_host: ${{ vars.GCRW_HOST }}
+          gcr_host: ${{ vars.GCR_HOST }}
+          registry_username: ${{ secrets.CUSTOM_REGISTRY_USERNAME }}
+          registry_password: ${{ secrets.CUSTOM_REGISTRY_PASSWORD }}
+          image-name-short: ${{ env.IMAGE_NAME_SHORT }}
+          push: true
+          fail_if_trivy_fails: 0
